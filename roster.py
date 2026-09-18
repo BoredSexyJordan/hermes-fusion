@@ -10,9 +10,9 @@ No hardcoded fleet. Override any roster in HERMES_HOME/fusion.yaml.
 """
 from __future__ import annotations
 
-from paths import hermes_home
-from classify import is_frontier
-import harnesses
+from .paths import hermes_home
+from .classify import is_frontier
+from . import harnesses
 
 HARNESSES = ("hermes", "codex", "claude", "grok")
 

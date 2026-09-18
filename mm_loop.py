@@ -26,7 +26,7 @@ from pathlib import Path
 
 # Import the adapter layer from the plugin package (co-located)
 sys.path.insert(0, str(Path(__file__).parent))
-from adapters import Dispatch, dispatch as adapter_dispatch  # noqa: E402
+from .adapters import Dispatch, dispatch as adapter_dispatch  # noqa: E402
 
 DEFAULT_DEADLINE_S = 600
 MAX_REWRITE_CYCLES = 1

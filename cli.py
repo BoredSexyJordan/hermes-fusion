@@ -14,8 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from paths import hermes_home, hermes_python
-import roster
+from .paths import hermes_home, hermes_python
+from . import roster
 
 PLUGIN_DIR = Path(__file__).parent
 HOME = hermes_home()

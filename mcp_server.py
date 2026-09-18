@@ -21,9 +21,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-import roster
+from . import roster
 
-from paths import hermes_home
+from .paths import hermes_home
 
 TOKEN = os.environ.get("FUSION_TOKEN", "")
 HOST = os.environ.get("FUSION_HOST", "0.0.0.0")

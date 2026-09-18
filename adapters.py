@@ -26,7 +26,7 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from paths import hermes_bin, hermes_home
+from .paths import hermes_bin, hermes_home
 
 HERMES_BIN = hermes_bin()
 RUNS_BASE = hermes_home() / "fusion" / "runs"
