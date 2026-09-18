@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "fusion-router",
+  "version": "0.1.0",
+  "description": "Multi-model fusion routing for Codex: detect your model fleet and route work as Frontier -> Middle Manager -> Frontier via a hosted fusion MCP endpoint.",
+  "extensions": {
+    "com.openai": {
+      "title": "Fusion Router",
+      "description": "Routes work through a cheap Middle Manager and Frontier workers/consult. Uses the hosted fusion router MCP endpoint, or the detection skill for a roster."
+    }
+  }
+}
