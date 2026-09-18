@@ -4,7 +4,7 @@ Fusion Phase Executor — MoA-powered autonomous plan execution.
 
 Takes a validated Fusion v3 plan and:
   1. Probes provider health before each phase
-  2. Falls back to XRToken equivalents when primary fails (recursive-safe)
+  2. Falls back to Fallback router equivalents when primary fails (recursive-safe)
   3. Dispatches each phase to its assigned model
   4. Handles MoA blend execution (sequential layer dispatch + aggregation)
   5. Tracks run state for resumability
@@ -36,40 +36,38 @@ RUNS_BASE = Path(
     os.environ.get("HERMES_HOME") or (Path.home() / ".hermes")
 ) / "fusion" / "runs"
 
-# ── Subscription-only providers (free budget) ────────────────────────
+# ── Routing config (drained of personal infra) ─────────────────────────
+# Fallback/subscription routing is operator-config via fusion.yaml if wanted;
+# the default ships EMPTY so no invented or personal providers ever route.
 
-SUBSCRIPTION_PROVIDERS = {"openai-codex", "claude-team", "xai-oauth"}
+def _router_config() -> dict:
+    cfg = {}
+    try:
+        home = Path(os.environ.get("HERMES_HOME") or (Path.home() / ".hermes"))
+        p = home / "fusion.yaml"
+        if p.exists():
+            import yaml
+            cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    except Exception:
+        cfg = {}
+    return cfg.get("router", {})
 
-# ── Fallback Map ──────────────────────────────────────────────────────
-# Primary model → (fallback model, fallback provider)
-# The fallback router model MUST differ from the target model.
 
-FALLBACK_MAP = {
-    # GPT models
-    "gpt-5.6-sol":      ("pools/gpt-5.6-sol-low",  "xrtoken-cheap"),
-    "gpt-5.6-luna":     ("pools/gpt-5.6-luna-low",  "xrtoken-cheap"),
-    "gpt-5.6-terra":    ("pools/gpt-5.6-terra-low", "xrtoken-cheap"),
-    # Claude models
-    "claude-opus-4-8":   ("claude-max/claude-opus-4-8", "xrtoken-claude-max"),
-    "claude-sonnet-4-6": ("claude-max/claude-sonnet-4-6", "xrtoken-sonnet"),
-    "claude-haiku-4-5":  ("claude-max/claude-haiku-4-5", "xrtoken-cheap"),
-    # Grok models
-    "grok-4.5":          ("xai/grok-4.5", "xrtoken-grok"),
-    "grok-4.1-fast":     ("xai/grok-4-1-fast-reasoning", "xrtoken-cheap"),
-    "grok-4.20":         ("xai/grok-4-20-reasoning", "xrtoken-cheap"),
-    # DeepSeek models
-    "deepseek-v4-flash": ("ds-sp/deepseek-v4-flash", "xrtoken-deepseek"),
-    "deepseek-v4-pro":   ("ds-sp/deepseek-v4-pro", "xrtoken-cheap"),
-}
+_ROUTER = _router_config()
 
-# ── Provider-Specific Models (for health probes) ─────────────────────
+# Subscription-only providers (free budget). Empty by default: no free
+# "subscription" providers are assumed for strangers.
+SUBSCRIPTION_PROVIDERS = set(_ROUTER.get("subscription_providers") or ())
 
-HEALTH_PROBE_MODELS = {
-    "openai-codex":  "gpt-5.6-sol",
-    "claude-team":   "claude-opus-4-8",
-    "xai-oauth":     "grok-4.5",
-    "deepseek":      "deepseek-v4-flash",
-}
+# Primary model -> (fallback model, fallback provider). Empty by default —
+# no fallback is invented; operators pin their own routes under `router:`.
+FALLBACK_MAP = _ROUTER.get("fallback_map") or {}
+
+# Provider-specific health-probe models. Empty -> probe the assigned model.
+HEALTH_PROBE_MODELS = _ROUTER.get("health_probe_models") or {}
+
+# Providers treated as metered (affects cost-tier display). Empty by default.
+_CUSTOM_METERED = set(_ROUTER.get("metered_providers") or ())
 
 HEALTH_PROBE_PROMPT = 'Reply with exactly: ok'
 
@@ -98,14 +96,15 @@ def log(msg):
 
 def hermes_chat(prompt, provider, model, max_turns=1, toolsets=None, timeout=120):
     """Run Hermes chat in quiet mode. Returns (output, success_bool)."""
+    import shutil
+    binary = os.environ.get("HERMES_BIN") or shutil.which("hermes") or "hermes"
     cmd = [
-        "hermes", "chat",
+        binary, "chat",
         "-q", prompt,
         "--provider", provider,
         "--model", model,
         "--max-turns", str(max_turns),
-        "--quiet", "--ignore-rules",
-        "--source", "tool",
+        "--quiet", "--source", "tool",
     ]
     if toolsets:
         cmd += ["--toolsets", ",".join(toolsets)]
@@ -113,7 +112,6 @@ def hermes_chat(prompt, provider, model, max_turns=1, toolsets=None, timeout=120
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout,
             start_new_session=True,
-            env={**os.environ, "HERMES_ACCEPT_HOOKS": "1"},
         )
         output = result.stdout.strip()
         if output:
@@ -143,13 +141,17 @@ def probe_provider(provider, model):
     return False, latency, resp[:150]
 
 
-def probe_xrtoken():
-    """Check if XRToken is reachable at all (independent of specific model).
-
-    Uses pools/gpt-5.6-sol-fast — fast probe model. Timeout of 30s.
-    """
+def probe_fallback_router():
+    """Health-check the fallback router infra. Not configured by default:
+    with an empty fallback map there is nothing to probe, so it reports down
+    and resolve_route simply has no fallback path (never an invented route)."""
+    if not FALLBACK_MAP:
+        return False, 0, "no fallback router configured"
+    # probe the first configured fallback provider's model generically
+    first_model, first_prov = next(iter(FALLBACK_MAP.values()))
     start = time.monotonic()
-    resp, ok = hermes_chat(HEALTH_PROBE_PROMPT, "xrtoken-cheap", "pools/gpt-5.6-sol-fast", max_turns=1, timeout=30)
+    resp, ok = hermes_chat(HEALTH_PROBE_PROMPT, first_prov, first_model,
+                           max_turns=1, timeout=30)
     latency = int((time.monotonic() - start) * 1000)
     if ok:
         return True, latency, None
@@ -167,12 +169,12 @@ def resolve_route(assigned_provider, assigned_model, budget="balanced"):
     Simple cascade:
       1. Probe the assigned provider directly.
       2. If alive → use it.
-      3. If dead → check XRToken → look up FALLBACK_MAP → probe fallback → use it.
-      4. If XRToken also dead → DeepSeek as last resort.
+      3. If dead → check Fallback router → look up FALLBACK_MAP → probe fallback → use it.
+      4. If Fallback router also dead → DeepSeek as last resort.
 
-    The fallback map routes to the XRToken equivalent of the same model
-    (e.g. gpt-5.6-sol → pools/gpt-5.6-sol-low), so Codex rate limits
-    transparently route to the same model on XRToken without switching
+    The fallback map routes to the Fallback router equivalent of the same model
+    (e.g. same-model fallback on a different provider), so rate limits
+    transparently route to the same model on Fallback router without switching
     to a completely different model family.
     """
     # Step 0: Budget gate
@@ -189,15 +191,15 @@ def resolve_route(assigned_provider, assigned_model, budget="balanced"):
     if alive:
         return assigned_provider, assigned_model, False, None
 
-    # Step 2: Check XRToken as fallback infrastructure
-    xrtoken_alive, xlatency, xerr = probe_xrtoken()
-    if not xrtoken_alive:
+    # Step 2: Check Fallback router as fallback infrastructure
+    fallback_alive, xlatency, xerr = probe_fallback_router()
+    if not fallback_alive:
         return None, None, True, (
             f"{assigned_provider}/{assigned_model} unavailable ({err}). "
-            f"XRToken also unreachable ({xerr}). No fallback path."
+            f"Fallback router also unreachable ({xerr}). No fallback path."
         )
 
-    # Step 3: Look up the same-model equivalent on XRToken
+    # Step 3: Look up the same-model equivalent on Fallback router
     fallback = FALLBACK_MAP.get(assigned_model)
     if not fallback:
         return None, None, True, (
@@ -219,7 +221,7 @@ def resolve_route(assigned_provider, assigned_model, budget="balanced"):
     if fb_alive:
         return fallback_provider, fallback_model, True, (
             f"{assigned_provider}/{assigned_model} unavailable ({err}). "
-            f"Routed to same model on XRToken: {fallback_provider}/{fallback_model}."
+            f"Routed to same model on Fallback router: {fallback_provider}/{fallback_model}."
         )
 
     # Step 6: Budget check before last resort
@@ -232,15 +234,15 @@ def resolve_route(assigned_provider, assigned_model, budget="balanced"):
     # Step 7: Last resort — DeepSeek universal fallback
     deepseek_alive, dlatency, derr = probe_provider("deepseek", "deepseek-v4-flash")
     if deepseek_alive:
-        log("  \u26a0 Primary and XRToken fallback both failed. Using DeepSeek as last resort.")
+        log("  \u26a0 Primary and Fallback router fallback both failed. Using DeepSeek as last resort.")
         return "deepseek", "deepseek-v4-flash", True, (
-            f"{assigned_provider} and XRToken fallback both unavailable. "
+            f"{assigned_provider} and Fallback router fallback both unavailable. "
             f"Last-resort routed to deepseek/deepseek-v4-flash."
         )
 
     return None, None, True, (
         f"All providers exhausted. Primary: {err}. "
-        f"XRToken: {ferr or 'unknown'}. DeepSeek: {derr}."
+        f"Fallback router: {ferr or 'unknown'}. DeepSeek: {derr}."
     )
 
 
@@ -457,11 +459,11 @@ def generate_plan_variants(plan, variant_profiles, budget="balanced"):
             f"BASE PLAN:\n{json.dumps(plan, indent=2)}\n\n"
             f"For '{profile}':\n"
             f"- **cost-minimizing**: Replace every frontier model with the cheapest capable "
-            f"alternative. Use DeepSeek and Grok 4.1 Fast where possible. Use XRToken pools "
+            f"alternative. Use DeepSeek and Grok 4.1 Fast where possible. Use Fallback router pools "
             f"for GPT work. Drop non-essential MoA layers.\n"
             f"- **quality-maximizing**: Use the best model for every phase regardless of cost. "
-            f"Add Claude review phase. Add GPT audit phase. Prefer frontier models over XRToken pools.\n"
-            f"- **balanced**: Prefer subscription models (free). Use XRToken pools only as fallback. "
+            f"Add Claude review phase. Add GPT audit phase. Prefer frontier models over Fallback router pools.\n"
+            f"- **balanced**: Prefer subscription models (free). Use Fallback router pools only as fallback. "
             f"MoA only for genuinely conflicting requirements.\n\n"
             f"Return ONLY the variant Fusion v3 plan as a JSON code block. "
             f"```json\n...\n```\n"
@@ -495,12 +497,6 @@ def generate_plan_variants(plan, variant_profiles, budget="balanced"):
 
 
 # ── Cost tier helpers ──────────────────────────────────────────────────
-
-
-_CUSTOM_METERED = {
-    "xrtoken-cheap", "xrtoken-claude-max", "xrtoken-sonnet",
-    "xrtoken-grok", "xrtoken-deepseek", "deepseek",
-}
 
 
 def cost_tier(provider):
@@ -717,9 +713,9 @@ def main():
         help=(
             "free: subscription providers only (openai-codex, claude-team, xai-oauth). "
             "Metred phases fail with a clear explanation.\n"
-            "balanced: prefer subscription, fall back to XRToken cheap routes.\n"
+            "balanced: prefer subscription, fall back to Fallback router cheap routes.\n"
             "premium: use the best model regardless; skip probe timeouts; "
-            "try primary, XRToken fallback, then DeepSeek last resort."
+            "try primary, Fallback router fallback, then DeepSeek last resort."
         ),
     )
     parser.add_argument(

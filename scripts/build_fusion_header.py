@@ -160,10 +160,6 @@ MODEL_EMOJI = {
     "gpt-5.5": "🧠",
     "gpt-5.5-pro": "🧠",
     "gpt-5.4": "🧠",
-    "pools/gpt-5.6-sol-low": "🧠",
-    "pools/gpt-5.6-sol-fast": "🧠",
-    "pools/gpt-5.6-luna-low": "🧠",
-    "pools/gpt-5.6-terra-low": "🧠",
     "gpt-mix/gpt-5.5": "🧠",
     "gpt-5.4-mini": "🧠",
 }
@@ -174,9 +170,6 @@ MODEL_EMOJI.update({
     "claude-opus-4-6": "🤖",
     "claude-sonnet-4-6": "🤖",
     "claude-haiku-4-5": "🤖",
-    "claude-max/claude-opus-4-8": "🤖",
-    "claude-max/claude-sonnet-4-6": "🤖",
-    "claude-max/claude-haiku-4-5": "🤖",
 })
 
 MODEL_EMOJI.update({
@@ -192,8 +185,6 @@ MODEL_EMOJI.update({
 MODEL_EMOJI.update({
     "deepseek-v4-flash": "🔧",
     "deepseek-v4-pro": "🔧",
-    "ds-sp/deepseek-v4-flash": "🔧",
-    "ds-sp/deepseek-v4-pro": "🔧",
 })
 
 MODEL_EMOJI.update({
@@ -211,11 +202,6 @@ PROVIDER_EMOJI = {
     "xai-oauth": "🌐",
     "xai": "🌐",
     "deepseek": "🔧",
-    "xrtoken-cheap": "🎛",
-    "xrtoken-claude-max": "🎛",
-    "xrtoken-sonnet": "🎛",
-    "xrtoken-grok": "🎛",
-    "xrtoken-deepseek": "🎛",
     "zai": "🏮",
     "custom:hermes-gpt-mcp": "🔗",
 }
@@ -227,11 +213,6 @@ PROVIDER_NAME = {
     "xai-oauth": "Grok",
     "xai": "Grok",
     "deepseek": "DeepSeek",
-    "xrtoken-cheap": "XRToken",
-    "xrtoken-claude-max": "XRToken",
-    "xrtoken-sonnet": "XRToken",
-    "xrtoken-grok": "XRToken",
-    "xrtoken-deepseek": "XRToken",
     "zai": "Z.AI",
     "custom:hermes-gpt-mcp": "Adapter",
 }

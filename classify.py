@@ -18,8 +18,7 @@ CHEAP_HINTS = (
 
 # Providers that route cheap models by default even when the model name is
 # ambiguous (custom gateways / cheap relays).
-_CHEAP_PROVIDERS = {"deepseek", "inferx", "venice", "zai", "glm", "groq",
-                    "xrtoken-cheap", "ds-sp"}
+_CHEAP_PROVIDERS = {"deepseek", "inferx", "venice", "zai", "glm", "groq"}
 
 
 def is_frontier(provider: str, model: str) -> bool:
