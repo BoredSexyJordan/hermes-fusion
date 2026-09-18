@@ -1,0 +1,27 @@
+{
+  "name": "fusion-router",
+  "version": "0.1.0",
+  "description": "Multi-model fusion router: routes work through a cheap Middle Manager and Frontier workers/consult, with provenance.",
+  "displayName": "Fusion Router",
+  "author": {
+    "name": "Jordan Rosenberg"
+  },
+  "homepage": "https://github.com/BoredSexyJordan/hermes-fusion",
+  "repository": "https://github.com/BoredSexyJordan/hermes-fusion",
+  "license": "MIT",
+  "keywords": ["routing", "orchestration", "multi-model", "frontier", "agents"],
+  "tools": [],
+  "commands": [
+    {
+      "name": "fusion",
+      "description": "Route a task through the Frontier -> Middle Manager -> Frontier structure.",
+      "path": "./commands/fusion.md"
+    }
+  ],
+  "agents": [
+    "agents/01-middle-manager.md",
+    "agents/02-frontier-worker.md",
+    "agents/03-consult.md"
+  ],
+  "hooks": []
+}

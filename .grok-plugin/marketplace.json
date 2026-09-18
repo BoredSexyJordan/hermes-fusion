@@ -1,0 +1,17 @@
+{
+  "name": "fusion-router-marketplace",
+  "owner": "Jordan Rosenberg",
+  "version": "0.1.0",
+  "description": "Fusion router: Frontier -> Middle Manager -> Frontier multi-model routing for Grok Build (Claude-compatible).",
+  "plugins": [
+    {
+      "name": "fusion-router",
+      "source": "./plugins/fusion-router",
+      "description": "Multi-model fusion router: routes work through a cheap Middle Manager and Frontier workers/consult, with provenance.",
+      "version": "0.1.0",
+      "author": "Jordan Rosenberg",
+      "homepage": "https://github.com/BoredSexyJordan/hermes-fusion",
+      "category": "Tools"
+    }
+  ]
+}

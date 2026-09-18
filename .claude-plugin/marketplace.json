@@ -1,0 +1,21 @@
+{
+  "name": "fusion-router-marketplace",
+  "owner": {
+    "name": "Jordan Rosenberg",
+    "email": "jordan@boredsexy.com"
+  },
+  "version": "0.1.0",
+  "description": "Fusion router: Frontier -> Middle Manager -> Frontier multi-model routing for Claude Code and Grok Build.",
+  "plugins": [
+    {
+      "name": "fusion-router",
+      "source": "./plugins/fusion-router",
+      "description": "Multi-model fusion router: routes work through a cheap Middle Manager and Frontier workers/consult, with provenance.",
+      "version": "0.1.0",
+      "author": "Jordan Rosenberg",
+      "repository": "https://github.com/BoredSexyJordan/hermes-fusion",
+      "category": "Tools",
+      "tags": ["routing", "orchestration", "multi-model", "agents"]
+    }
+  ]
+}
