@@ -23,6 +23,8 @@ from pathlib import Path
 
 import roster
 
+from paths import hermes_home
+
 TOKEN = os.environ.get("FUSION_TOKEN", "")
 HOST = os.environ.get("FUSION_HOST", "0.0.0.0")
 PORT = int(os.environ.get("FUSION_PORT", "8765"))
@@ -52,8 +54,6 @@ def _route(task: str, task_type: str | None = None, harness: str = "all") -> dic
 
 def _status(limit: int = 5) -> dict:
     runs = []
-    base = roster.hermes_home() / "fusion" / "runs" if False else None
-    from _paths import hermes_home
     base = hermes_home() / "fusion" / "runs"
     if base.exists():
         for d in sorted(base.iterdir(), reverse=True)[:limit]:
@@ -150,7 +150,7 @@ def _auth_ok(headers: dict) -> bool:
     return headers.get("authorization") == f"Bearer {TOKEN}"
 
 
-def serve_http() -> None:
+def serve_http(host: str = HOST, port: int = PORT) -> None:
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
     class Handler(BaseHTTPRequestHandler):
@@ -191,8 +191,8 @@ def serve_http() -> None:
             responses = [r for r in responses if r.get("id") is not None]
             return self._send(200, responses if is_batch else (responses[0] if responses else {}))
 
-    print(f"fusion MCP listening on {HOST}:{PORT} (auth={'enabled' if TOKEN else 'OFF'})", file=sys.stderr)
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    print(f"fusion MCP listening on {host}:{port} (auth={'enabled' if TOKEN else 'OFF'})", file=sys.stderr)
+    ThreadingHTTPServer((host, port), Handler).serve_forever()
 
 
 def main() -> int:
@@ -202,9 +202,7 @@ def main() -> int:
     ap.add_argument("--host", default=HOST)
     args = ap.parse_args()
     if args.http:
-        global PORT
-        PORT = args.port
-        serve_http()
+        serve_http(host=args.host, port=args.port)
     else:
         serve_stdio()
     return 0
