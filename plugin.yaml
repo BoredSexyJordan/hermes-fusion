@@ -1,0 +1,5 @@
+name: fusion
+version: "0.1.0"
+description: "Multi-model fusion router: detects your installed model fleet across Hermes, Codex, Claude and Grok and builds a Frontier -> Middle Manager -> Frontier routing structure with pinned models and provenance."
+author: Jordan Rosenberg
+kind: general
