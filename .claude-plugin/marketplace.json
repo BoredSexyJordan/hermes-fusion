@@ -12,7 +12,7 @@
       "source": "./plugins/fusion-router",
       "description": "Multi-model fusion router: routes work through a cheap Middle Manager and Frontier workers/consult, with provenance.",
       "version": "0.1.0",
-      "author": "Jordan Rosenberg",
+      "author": { "name": "Jordan Rosenberg" },
       "repository": "https://github.com/BoredSexyJordan/hermes-fusion",
       "category": "Tools",
       "tags": ["routing", "orchestration", "multi-model", "agents"]
