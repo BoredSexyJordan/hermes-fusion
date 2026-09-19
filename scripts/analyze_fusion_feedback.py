@@ -14,6 +14,7 @@ Schedule: weekly (cron job `Fusion Feedback Loop`, Sundays 09:00)
 """
 
 import json
+import os
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -24,6 +25,9 @@ RUNS_BASE = HOME / "fusion" / "runs"
 REPORT_DIR = HOME / "fusion" / "feedback"
 INDEX_PATH = HOME / "fusion" / "model-index.json"
 SYNC_SCRIPT = HOME / "scripts" / "sync_model_index.py"
+if not SYNC_SCRIPT.exists():
+    # portable/plugin installs: the sync script ships alongside this analyzer
+    SYNC_SCRIPT = Path(__file__).resolve().parent / "sync_model_index.py"
 INDEX_MAX_AGE_DAYS = 14
 MIN_RUNS_FOR_TEMPLATE_CHANGE = 3
 
@@ -46,7 +50,7 @@ def ensure_model_index():
             pass
     try:
         subprocess.run(
-            [sys.executable, str(SYNC_SCRIPT), "--config", str(HOME / ".hermes" / "config.yaml")],
+            [sys.executable, str(SYNC_SCRIPT), "--config", str(HOME / "config.yaml")],
             check=True, capture_output=True, timeout=60,
         )
         fresh = True
